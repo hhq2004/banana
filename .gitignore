@@ -1,0 +1,63 @@
+# Results
+result/
+batch_flux_user_prompt_test_v2/
+ocr_out/
+
+# Batch outputs
+batch_*/
+
+# Models (large files)
+models/
+
+# Local model checkpoints (very large)
+sdxl_inpaint_0.1/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Input data (usually large)
+figure/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

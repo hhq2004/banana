@@ -1,0 +1,418 @@
+# ============================================================
+# 积分系统配置
+# ============================================================
+points:
+  credit_balance_initial: 20   # 新用户初始积分
+  invite:
+    inviter_reward: 5   # 邀请人奖励积分
+    invitee_reward: 2    # 被邀请人奖励积分
+    max_invite_points: 50  # 邀请人最多可获得的邀请积分
+    
+# ============================================================
+# 图片转可编辑DrawIO格式 - 配置文件
+# ============================================================
+
+# 应用基础配置（FastAPI / 安全）
+app:
+  logto:
+    management:
+      client_id: "kpx5y3kfij0a0dc3weldt"       # 管理端 clientId
+      client_secret: "GD3fv0YTZ1TFveZbPYjWmw0yFKi3z2Tb"   # 管理端 clientSecret
+      resource: "https://editbanana.anxin6.cn/api"        # 可留空，默认 <LOGTO_ENDPOINT>/api
+      audience: "https://editbanana.anxin6.cn/api"  # Changed 1699 for logto
+      # audience: "https://editbanana.anxin6.cn/api"
+    endpoint: "https://auth.editbanana.anxin6.cn" # Logto 服务地址
+  fastapi:
+    host: "0.0.0.0"
+    port: 1699  # Changed 1699 for logto
+    cors_origins: "*"
+    upload_limit:
+      enabled: true         # 是否启用上传并发限制（Redis 计数）
+      key: "tasks:upload:inflight"
+      max_inflight: 3000       # 同时允许的 /tasks/upload 请求数
+      ttl_seconds: 3000       # 计数键的过期时间，防止泄漏
+      hold_ttl_seconds: 360 # second
+  security:
+    secret_key: "change-this-in-prod"
+    jwt_algorithm: "HS256"
+    access_token_expire_minutes: 1440
+  auth:
+    # Rate limiting features - DISABLED by default (enabled: false)
+    # Set to 'enabled: true' in production after configuring Redis
+    # Note: config.yaml.example has these enabled as production reference
+    rate_limit:
+      enabled: false
+      login_per_minute_per_ip: 120
+      login_per_minute_per_user: 30
+      register_per_minute_per_ip: 20
+      register_per_hour_per_ip: 60
+      upload_per_minute_per_user: 30
+      upload_per_minute_per_ip: 60
+    brute_force:
+      enabled: false
+      max_failures: 5
+      block_seconds: 900
+    cache:
+      enabled: false
+      me_ttl_seconds: 60
+
+# 数据库配置（Postgres）
+database:
+  user: "edit_banana_user"
+  password: "Hsfs971263"
+  host: "localhost"
+  port: 5432
+  name: "edit_banana_db"
+  url: "postgresql+psycopg2://edit_banana_user:Hsfs971263@localhost:5432/edit_banana_db"
+  userdb: "postgresql+psycopg2://edit_banana_user:Hsfs971263@localhost:5432/logto_db_online"
+  usertable: "users"
+
+# Redis / Celery 配置
+redis:
+  url: "redis://localhost:6379/0"
+
+celery:
+  broker_url: "redis://localhost:6379/0"
+  backend_url: "redis://localhost:6379/1"
+  task_default_timeout_seconds: 100
+  task_soft_timeout_seconds: 100
+  concurrency: 4
+  log_level: "INFO"
+  flower_port: 5555
+  workers:
+    log_level: "INFO"
+    cuda_visible_devices: "4"
+    concurrency:
+      cpu: 40
+      text: 10
+      upscale: 4
+      sam3: 12
+      rmbg: 4
+    cuda_visible_devices_by_queue:
+      cpu: "4"
+      text: "4"
+      upscale: "4"
+      sam3: "4"
+      rmbg: "4"
+  queue:
+    upscale: "upscale_queue"
+    sam3: "sam3_queue"
+    rmbg: "rmbg_queue"
+    cpu: "cpu_queue"
+    text: "text_queue"
+  rate_limit:
+    enabled: false
+    max_per_minute: 60
+    burst: 60
+    key: "celery:dispatch:bucket"
+    wait_timeout: 30
+    poll_interval: 0.2
+    ttl: 120
+
+timeouts:
+  pipeline_total_seconds: 180
+  database_connect_seconds: 10
+  database_pool_timeout_seconds: 30
+
+# 质量评估与二次处理（网页端 Celery 流程）
+# quality:
+#   enabled: false       # false = 不跑 MetricEvaluator（质量评估）
+# refinement:
+#   enabled: false        # false = 不跑 RefinementProcessor（二次处理）
+#   score_threshold: 90
+
+# SAM3模型配置
+sam3:
+  checkpoint_path: "/shared_data/modelData/modelscope/models/facebook/sam3/sam3.pt"
+  bpe_path: "/shared_data/modelData/modelscope/models/facebook/sam3/bpe_simple_vocab_16e6.txt.gz"
+  bpe_path_litserve: "/shared_data/modelData/modelscope/models/facebook/sam3/bpe_simple_vocab_16e6.txt.gz"
+  epsilon_factor: 0.02
+
+# RMBG模型配置
+rmbg:
+  model_path: "/shared_data/modelData/modelscope/models/AI-ModelScope/RMBG-2___0/onnx/model.onnx"
+
+# ============================================================
+# 服务配置
+# ============================================================
+services:
+  litserve:
+    host: "127.0.0.1"
+    port_sam3: 8022
+    port_rmbg: 8023
+    port_upscale: 8024
+
+    devices_sam3: [1,2]
+
+    # 日志好像rmbg比较多
+    devices_rmbg: [0,3]
+    devices_upscale: [3]
+
+    # 6，4，4；
+    # 后两个只能是2（如果在一张卡,已经占90%了）
+    
+    workers_per_device_sam3: 4
+    workers_per_device_rmbg: 2
+    workers_per_device_upscale: 2
+
+    timeout_sam3: 1200
+    timeout_rmbg: 1200
+    timeout_upscale: 1200
+
+    max_batch_size_sam3: 8
+    max_batch_size_rmbg: 4
+    max_batch_size_upscale: 4
+
+# ============================================================
+# 🖼️ 条件超分配置 - 低分辨率图片自动放大
+# ============================================================
+upscale:
+  enabled: true                    # 是否启用条件超分
+  min_dimension: 800               # 原图短边小于此值时触发超分（像素）
+  model_path: "/shared_data/user_data/yixiangjian/RealESRGAN_x4plus_anime_6B.pth"
+  # 可选：覆盖设备/精度
+  # device: "auto"                # 示例: "cuda:0" / "cpu"
+  # fp16: false
+
+# ============================================================
+# 🔧 词组库配置 - 在这里更新你的提示词
+# ============================================================
+prompt_groups:
+  # ----- 图片类：需要去背景转base64 -----
+  image:
+    name: "图片类"
+    description: "需要转base64的非矢量图形"
+    score_threshold: 0.5
+    min_area: 100
+    priority: 3    # 去重优先级（越高越优先保留）
+    # prompts:
+    #   - "icon"
+    #   - "picture"
+    #   - "logo"
+    #   - "chart"
+    #   - "graph"
+    #   - "plot"
+    #   - "diagram"
+    #   - "heatmap"
+    #   - "line graph"
+    #   - "bar chart"
+    #   - "pie chart"
+    #   - "scatter plot"
+    #   - "function_graph"
+    #   - "screenshot"
+  
+  # ----- 箭头类：需要方向检测 -----
+  arrow:
+    name: "箭头类"
+    description: "箭头和连接线，需要方向检测"
+    score_threshold: 0.45    # 箭头通常置信度较低
+    min_area: 50             # 箭头可能比较小
+    priority: 4              # 箭头优先级最高，避免被覆盖
+    # prompts:
+    #   - "arrow"
+    #   - "line"
+    #   - "connector"
+  
+  # ----- 基本图形：需要取色矢量化 -----
+  shape:
+    name: "基本图形"
+    description: "可矢量化的基本图形，需要取色"
+    score_threshold: 0.5
+    min_area: 200
+    priority: 2
+    # prompts:
+    #   - "rectangle"
+    #   - "rounded rectangle"
+    #   - "diamond"
+    #   - "ellipse"
+    #   - "circle"
+    #   - "cylinder"
+    #   - "cloud"
+    #   - "actor"
+    #   - "hexagon"
+    #   - "triangle"
+    #   - "parallelogram"
+    #   - "trapezoid"
+    #   - "square"
+  
+  # ----- 背景容器：通常面积较大 -----
+  background:
+    name: "背景容器"
+    description: "背景框和容器"
+    score_threshold: 0.4     # 背景容器通常置信度较低
+    min_area: 500            # 背景通常比较大
+    priority: 1              # 优先级最低，容易被其他元素覆盖
+    # prompts:
+    #   - "section_panel"
+    #   - "title bar"
+    #   - "container"
+
+# ============================================================
+# 🔍 增强框检测配置 - 多轮图像预处理提升浅色边框检测
+# ============================================================
+enhanced_detection:
+  enabled: true      
+  debug: false                             
+  debug_output_dir: "./debug"         
+  temp_dir: "/shared_data/img2xml/temp"   
+  enhance_levels: [4.0, 8.0] 
+  enable_downscale: true         
+  downscale_factor: 0.125
+  enable_subregion: true
+  subregion_area_threshold: 0.08
+  subregion_max_count: 4        
+  iou_threshold: 0.5              
+  score_threshold: 0.2                  
+  min_area: 25                  
+  frame_prompts:                  
+    - "rectangle"
+    - "rounded rectangle"
+    - "square"
+    # 浅色/大面积背景
+    - "flowchart section"
+    - "workflow section"
+    - "title section"
+    - "colored section"
+    # 虚线
+    - "dashed border"
+    - "dashed section"
+# ============================================================
+# 文字过滤配置（SAM3不处理文字，由文字组单独处理）
+# ============================================================
+text_filter:
+  # 文字类型黑名单（完全过滤）
+  blacklist:
+    - "text"
+    - "word"
+    - "words"
+    - "label"
+    - "labels"
+    - "title"
+    - "titles"
+    - "caption"
+    - "captions"
+    - "heading"
+    - "headings"
+    - "subtitle"
+    - "annotation"
+    - "annotations"
+    - "note"
+    - "notes"
+    - "letter"
+    - "letters"
+    - "character"
+    - "characters"
+    - "number"
+    - "numbers"
+    - "paragraph"
+    - "sentence"
+    - "string"
+    - "legend"
+    - "axis label"
+    - "tick label"
+    - "watermark"
+    - "button"
+    - "menu"
+    - "header"
+    - "footer"
+    - "tooltip"
+  
+  # 文字关键词（用于模糊匹配过滤）
+  keywords:
+    - "text"
+    - "word"
+    - "label"
+    - "title"
+    - "caption"
+    - "annotation"
+    - "note"
+    - "letter"
+    - "character"
+
+# ============================================================
+# DrawIO 样式配置
+# ============================================================
+drawio_styles:
+  rectangle: "rounded=0;whiteSpace=wrap;html=1;"
+  rounded_rectangle: "rounded=1;whiteSpace=wrap;html=1;"
+  title_bar: "rounded=0;whiteSpace=wrap;html=1;fillColor=#E6E6E6;"
+  section_panel: "rounded=0;whiteSpace=wrap;html=1;dashed=1;dashPattern=1 1;"
+  container: "rounded=1;whiteSpace=wrap;html=1;"
+  diamond: "rhombus;whiteSpace=wrap;html=1;"
+  ellipse: "ellipse;whiteSpace=wrap;html=1;"
+  circle: "ellipse;whiteSpace=wrap;html=1;"
+  cylinder: "shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;"
+  cloud: "ellipse;shape=cloud;whiteSpace=wrap;html=1;"
+  actor: "shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;"
+  hexagon: "shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;"
+  triangle: "triangle;whiteSpace=wrap;html=1;"
+  parallelogram: "shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;"
+  trapezoid: "shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;"
+  square: "rounded=0;whiteSpace=wrap;html=1;"
+  arrow: "edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;"
+  line: "edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;"
+  connector: "edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=classic;"
+
+# ============================================================
+# 去重配置
+# ============================================================
+deduplication:
+  iou_threshold: 0.7           # IoU阈值，超过此值认为重叠
+  arrow_iou_threshold: 0.85    # 箭头的特殊IoU阈值
+  shape_image_iou_threshold: 0.6  # 基础图形和图片类重叠的IoU阈值（触发智能判断）
+  contain_threshold: 0.8       # 包含关系判定阈值
+  min_contained_elements: 2    # 判定为容器需要包含的最少子元素数
+  
+  # 图像复杂度判断阈值
+  complexity_thresholds:
+    laplacian_var: 800         # 拉普拉斯方差阈值（高于此值认为是复杂图像）
+    std_dev: 55                # 标准差阈值（高于此值认为是复杂图像）
+    border_contrast: 25        # 边框对比度阈值（高于此值认为有清晰边框）
+
+# ============================================================
+# 路径配置
+# ============================================================
+paths:
+  input_dir: "/shared_data/img2xml/cases"
+  output_dir: "/shared_data/img2xml/output"
+  temp_dir: "/shared_data/img2xml/output"
+  web_tasks_dir: "/shared_data/img2xml/output" 
+  log_dir: "/shared_data/img2xml/logs/"
+
+
+# ============================================================
+# XML合并配置
+# ============================================================
+xml_merge:
+  layer_rules:
+    text_layer: 4        # 最上层
+    arrow_layer: 3       # 箭头层
+    image_layer: 2       # 图片层
+    shape_layer: 1       # 基本图形层
+    background_layer: 0  # 背景层
+
+# ============================================================
+# 颜色提取配置
+# ============================================================
+dominant_color:
+  border_width: 5
+  kmeans_cluster_num: 3
+  min_pixel_count: 50
+  saturation_threshold: 25
+  brightness_min: 12
+  brightness_max: 240
+  stroke_brightness_ratio: 0.85
+
+# ============================================================
+# 文字处理配置（OCR + 公式识别）
+# ============================================================
+text:
+  # Azure Document Intelligence 本地容器地址
+  azure_endpoint: "http://localhost:5000-"
+  
+  # 公式识别引擎: 'pix2text' 或 'none'
+  formula_engine: "pix2text"
+  
+  # 成本估算（仅供参考）
+  cost_per_page_usd: 0.01
+  usd_to_cny_rate: 7.2

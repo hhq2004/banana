@@ -1,0 +1,16 @@
+IMAGE_PROMPT = [
+    "icon",
+    "picture",
+    "logo",
+    "chart",
+    "graph",
+    "plot",
+    "diagram",
+    "heatmap",
+    "line graph",
+    "bar chart",
+    "pie chart",
+    "scatter plot",
+    "function_graph",
+    "screenshot",
+]

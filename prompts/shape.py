@@ -1,0 +1,15 @@
+SHAPE_PROMPT = [
+    "rectangle",
+    "rounded rectangle",
+    "diamond",
+    "ellipse",
+    "circle",
+    "cylinder",
+    "cloud",
+    "actor",
+    "hexagon",
+    "triangle",
+    "parallelogram",
+    "trapezoid",
+    "square",
+]

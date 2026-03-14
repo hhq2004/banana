@@ -1,0 +1,7 @@
+services:
+  litserve:
+    host: "127.0.0.1"
+    port_sam3: 8022
+    port_rmbg: 8023
+    port_upscale: 8024
+    scheme: "http"

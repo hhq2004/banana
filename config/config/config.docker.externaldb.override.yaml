@@ -1,0 +1,81 @@
+# Docker override for using an EXTERNAL Postgres (no postgres container required).
+#
+# This file is meant to be used as CONFIG_OVERLAY_PATH in docker-compose.backend.yml.
+# On Linux, ensure docker-compose adds:
+#   extra_hosts: ["host.docker.internal:host-gateway"]
+# so containers can reach the host network via host.docker.internal.
+
+app:
+  logto:
+    endpoint: "http://host.docker.internal:3007"
+    issuer: "http://localhost:3007/oidc"
+    management:
+      resource: "http://localhost:1700"
+      audience: "http://localhost:1700"
+  fastapi:
+    host: "0.0.0.0"
+    port: 1700
+
+database:
+  # External Postgres reachable from inside containers.
+  # If your DB is on another machine, replace host.docker.internal with that hostname/IP.
+  host: "host.docker.internal"
+  port: 5432
+  name: "edit_banana_db_dev"
+  url: "postgresql+psycopg2://edit_banana_user:Hsfs971263@host.docker.internal:5432/edit_banana_db_dev"
+
+  # Optional: Logto user DB for username lookup.
+  # If you don't run Logto DB, either leave it as-is or set to empty string.
+  userdb: ""
+
+redis:
+  url: "redis://redis:6380/0"
+
+celery:
+  broker_url: "redis://redis:6380/0"
+  backend_url: "redis://redis:6380/1"
+  task_default_timeout_seconds: 100
+  task_soft_timeout_seconds: 100
+
+timeouts:
+  pipeline_total_seconds: 180
+  database_connect_seconds: 10
+  database_pool_timeout_seconds: 30
+
+sam3:
+  checkpoint_path: "/shared_data/modelData/modelscope/models/facebook/sam3/sam3.pt"
+  bpe_path: "/shared_data/modelData/modelscope/models/facebook/sam3/bpe_simple_vocab_16e6.txt.gz"
+  bpe_path_litserve: "/shared_data/modelData/modelscope/models/facebook/sam3/bpe_simple_vocab_16e6.txt.gz"
+
+rmbg:
+  model_path: "/shared_data/modelData/modelscope/models/AI-ModelScope/RMBG-2___0/onnx/model.onnx"
+
+upscale:
+  model_path: "/shared_data/modelData/models/upscale/RealESRGAN_x4plus_anime_6B.pth"
+
+enhanced_detection:
+  temp_dir: "/app/backend/outputs/tmp"
+
+paths:
+  input_dir: "/app/backend/outputs/input"
+  output_dir: "/app/backend/outputs"
+  temp_dir: "/app/backend/outputs/tmp"
+  web_tasks_dir: "/app/backend/outputs"
+  log_dir: "/app/backend/logs"
+
+services:
+  litserve:
+    bind_host: "0.0.0.0"
+    host: "litserve"
+    public_host: "litserve"
+    scheme: "http"
+    port_sam3: 8027
+    port_rmbg: 8028
+    port_upscale: 8029
+    endpoints:
+      sam3: "http://litserve:8027/predict"
+      rmbg: "http://litserve:8028/predict"
+      upscale: "http://litserve:8029/predict"
+    devices_sam3: [3]
+    devices_rmbg: [3]
+    devices_upscale: [3]
